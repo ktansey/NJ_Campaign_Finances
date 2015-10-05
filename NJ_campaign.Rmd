@@ -1,6 +1,9 @@
+---
+output: html_document
+---
 Financial Contributions to 2016 Presidential Campaign in New Jersey
 ========================================================================================
-By Katherine Tansey
+
 
 
 # Introduction
