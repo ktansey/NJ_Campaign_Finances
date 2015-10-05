@@ -1,0 +1,824 @@
+Financial Contributions to 2016 Presidential Campaign in New Jersey
+========================================================================================
+By Katherine Tansey
+
+
+# Introduction
+
+Data about financial contributions to the 2016 US Presidential Campaigns for the
+state of New Jersey was download on the 1st of September 2015 from
+http://fec.gov/disclosurep/PDownload.do.
+
+There are mulitple candiates for each party (Republican and Democrat) still in 
+the runing for the party nomination, so there are more than two candidates at the
+moment.
+
+For the past 6 elections (since 1992), New Jersey has voted Democrat, and it will be interesting to see how this may effect current political leanings. 
+
+Load the data and relevant libraries. Examine the data for summary information. 
+```{r, echo=FALSE, message=FALSE, warning=FALSE, packages}
+setwd('/Users/katherinetansey/Dropbox/udacity/project4/P00000001-NJ')
+library(plyr)
+library(reshape2)
+library(ggplot2)
+library(grid)
+library(GGally)
+library(dplyr)
+library(tidyr)
+
+NJ <- read.csv('P00000001-NJ.csv')
+head(NJ)
+names(NJ)
+dim(NJ)
+str(NJ)
+summary(NJ)
+```
+
+What do the variables in the data mean ?
+
+CMTE_ID =	COMMITTEE ID			
+CAND_ID	= CANDIDATE ID			
+CAND_NM	= CANDIDATE NAME			
+CONTBR_NM	= CONTRIBUTOR NAME			
+CONTBR_CITY = CONTRIBUTOR CITY
+CONTBR_ST =	CONTRIBUTOR STATE
+CONTBR_ZIP = CONTRIBUTOR ZIP CODE
+CONTBR_EMPLOYER = 	CONTRIBUTOR EMPLOYER
+CONTBR_OCCUPATION = CONTRIBUTOR OCCUPATION
+CONTB_RECEIPT_AMT = CONTRIBUTION RECEIPT AMOUNT
+CONTB_RECEIPT_DT = CONTRIBUTION RECEIPT DAT
+RECEIPT_DESC = RECEIPT DESCRIPTION	
+MEMO_CD = MEMO CODE
+MEMO_TEXT	= MEMO TEXT
+FORM_TP = FORM TYPE
+FILE_NUM = FILE NUMBER
+TRAN_ID = TRANSACTION ID
+ELECTION_TP = ELECTION TYPE/PRIMARY GENERAL INDICATOR
+
+
+# Analysis 
+## Univariate Analysis
+
+I'm going to start by just getting to know the data, as I've never worked with it before. I find this easiest by plotting the variables and getting some summary informations for them. 
+
+Examine the variable cmte_id
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=cmte_id)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of COMMITTEE ID") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) 
+```
+
+Most people are donating to one committee predominantly. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=cand_id)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CANDIDATE ID") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Most people are donating to one candidate predominantly. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=cand_nm)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CANDIDATE NAME") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Most people are donating to Hilary Clinton (Democrat), which I think is the same
+information capture in the previous two plots.  
+
+From the plot, I did noticed an issue with one of the candidates names. Ted Cruz is listed twice (once in all upper case). This will be problematic if not corrected as we would incorrectly make conclusions about the data. This can be easily fixed. 
+
+```{r, echo=FALSE}
+NJ$cand_nm[NJ$cand_nm=="CRUZ, RAFAEL EDWARD TED"] <- "Cruz, Rafael Edward 'Ted'"
+table(NJ$cand_nm)
+```
+
+Looks like it is fixed. Lets remake the plot.
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=cand_nm)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CANDIDATE NAME") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=contbr_nm)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CONTRIBUTOR NAME") +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+```
+
+There are many different contributors but there are some that contribute more 
+than once. But this plot is too full to make much sense of the data. I'll count the
+number of times (frequency) each individual contributor name occurs (new variable called "count_NM").
+
+```{r, echo=FALSE}
+count_NM <- as.data.frame(table(NJ$contbr_nm))
+dim(count_NM)
+```
+
+How many unique individual contributors there are? 
+ 
+```{r, echo=FALSE} 
+dim(count_NM[which(count_NM$Freq == 1), ])
+```
+
+How many have indivdiuals have made over 10 contributions?
+
+```{r, echo=FALSE} 
+dim(count_NM[which(count_NM$Freq > 10), ])
+```
+
+Who is the most frequency contributors.
+
+```{r, echo=FALSE} 
+summary(count_NM$Freq)
+count_NM[which(count_NM$Freq == max(count_NM$Freq)), ]
+```
+
+The new variable is a count of the number of times each individual contributor name occurs, and this can be plotted to looked at the distribution. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(count_NM, aes(x=Freq)) + 
+  geom_histogram(binwidth=1) +
+  theme_bw() +
+  ggtitle("Histogram plot of Frequency of CONTRIBUTOR NAME") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+From the histogram for the number of times an indidivual donated, we can see that 
+most people donate only once, and few donate more than 5 times. There are 1353 
+unique donators in the file of 2435 donations. Of those 929 have donated only 
+once, with the maximum number of donations by a single person being 19 (listed as SACKS-WILNER, TOM). Only 11 individuals have donated more than 10 times. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=contbr_city)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CONTRIBUTOR CITY") +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+```
+
+The plot is too full to make much sense of it, but it is clear that some cities have more people making campaign donations than others. I'll again count the number of occurances of a city (new variable called "count_CITY").
+
+```{r, echo=FALSE}
+count_CITY <- as.data.frame(table(NJ$contbr_city))
+dim(count_CITY)
+```
+
+How many unique cities are listed?   
+
+```{r, echo=FALSE}
+dim(count_CITY[which(count_CITY$Freq == 1), ])
+```
+
+How many cities have made over 10 contributions? 
+
+```{r, echo=FALSE}
+dim(count_CITY[which(count_CITY$Freq > 10), ])
+```
+
+Which city is the most frequently listed (city with most contributors)? 
+
+```{r, echo=FALSE}
+summary(count_CITY$Freq)
+count_CITY[which(count_CITY$Freq == max(count_CITY$Freq)), ]
+```
+
+This new variables can also be plotted to look at the distribution.
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(count_CITY, aes(x=Freq)) + 
+  geom_histogram(binwidth=1) +
+  theme_bw() +
+  ggtitle("Histogram plot of Frequency of CONTRIBUTOR CITY") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```		
+
+Many cities only have few people donating to campaigns, but there are very active 
+cities, with the maximum number of people donating from a single city being 66 (city is listed as Princeton). There are 346 unique cities in the file of 2435 donations. Of those 68 are listed only once. 60 cities are listed more than 10 times. 
+
+Does the zip code variable give any additional information?
+I'll again count the number of observations of a zip code (new variable called "count_ZIP").  
+
+```{r, echo=FALSE}
+count_ZIP <- as.data.frame(table(NJ$contbr_zip))
+dim(count_ZIP)
+```
+
+How many unique zip codes are listed?
+
+```{r, echo=FALSE}
+dim(count_ZIP[which(count_ZIP$Freq == 1), ])
+```
+
+How many zip codes are listed in the dataset more than 10 times?
+
+```{r, echo=FALSE}
+dim(count_ZIP[which(count_ZIP$Freq > 10), ])
+```
+
+Which zip codes is the most frequently listed zip codes (zip code with most contributors)?
+
+```{r, echo=FALSE}
+summary(count_ZIP$Freq)
+count_ZIP[which(count_ZIP$Freq == max(count_ZIP$Freq)), ]
+```
+
+This new variables can also be plotted to look at the distribution.
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(count_ZIP, aes(x=Freq)) + 
+  geom_histogram(binwidth=1) +
+  theme_bw() +
+  ggtitle("Histogram plot of Frequency of CONTRIBUTOR ZIP CODE") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```	
+
+It does. The tail does not go to as high a number as the city variable (max was 66, zip max is 19), suggesting that zip while obviously highly related to city does give slightly different information, with there being more zip codes in the dataset (unique zip codes = 1219) than cities (unique cities = 346). The zip code with the largrest number of donations is 08055-9348, which is for Medford, and that is different from the city with the most donations which was Princeton. Perhaps zip code offers a greater resolution to location of an individuals by giving their lcoation within a city as well as city. 
+
+I will assess employer information in the same way, creating a new variable called "count_EMPLOYER" which counts the frequency of each individual employer listed.
+
+```{r, echo=FALSE}
+count_EMPLOYER <- as.data.frame(table(NJ$contbr_employer))
+dim(count_EMPLOYER)
+```
+
+Count the number of unique employers.
+
+```{r, echo=FALSE}
+dim(count_EMPLOYER[which(count_EMPLOYER$Freq == 1), ])
+```
+
+How many employers are listed more than 10 times?
+
+```{r, echo=FALSE}
+dim(count_EMPLOYER[which(count_EMPLOYER$Freq > 10), ])
+```
+
+List the most frequently listed employer from the contributors. 
+
+```{r, echo=FALSE}
+summary(count_EMPLOYER$Freq)
+count_EMPLOYER[which(count_EMPLOYER$Freq == max(count_EMPLOYER$Freq)), ]
+```
+
+There are 692 unique employers listed, most of which are single related to individuals who only gave a single donation (446). The maximum number of times the same employer is list is 338, which Retired. This variable may not be as relevant as CONTBR_OCCUPATION.
+
+Occupation will be assessed the same as the others, creating a new variable called "count_OCCUPATION" which counts the frequency of each individual occupation listed. 
+
+```{r, echo=FALSE}
+count_OCCUPATION <- as.data.frame(table(NJ$contbr_occupation))
+dim(count_OCCUPATION)
+```
+
+Count the number of unique occupations.
+
+```{r, echo=FALSE}
+dim(count_OCCUPATION[which(count_OCCUPATION$Freq == 1), ])
+```
+
+How many occupations are listed more than 10 times?
+
+```{r, echo=FALSE}
+dim(count_OCCUPATION[which(count_OCCUPATION$Freq > 10), ])
+```
+
+List the most frequently named occupation for the contributors, and the top 10 most frequent occupations listed. 
+
+```{r, echo=FALSE}
+summary(count_OCCUPATION$Freq)
+count_OCCUPATION[which(count_OCCUPATION$Freq == max(count_OCCUPATION$Freq)), ]
+head(count_OCCUPATION[order(-count_OCCUPATION$Freq),], n=10L)
+```
+
+Interestingly this variable list more donations coming from Retired individuals than employer. There are less unique occupations, but still a large number (445). It would be nice to see this broken down into even broader categories.  Might think about how best to handle this information. Could possible investigate just the occupations with the greatest number of contributors (like say the top 10).
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=contb_receipt_amt)) + 
+  geom_histogram(binwidth=100) +
+  theme_bw() +
+  ggtitle("Bar plot of CONTRIBUTION RECEIPT AMOUNT")
+```
+
+The histogram tells us that most people are giving small amounts, with some larger donations. There is also a peak just under $3000. This is likely $2,700 which is the limit an individual may give to an individual candidate, and thus the peak is signifying the maximum contribution. 
+Two things are very interesting:
+(1) There are donations above the limit of $2700.
+(2) There are some negative amounts in the contributions.
+
+```{r, echo=FALSE}
+dim(NJ[which(NJ$contb_receipt_amt < 0),])
+dim(NJ[which(NJ$contb_receipt_amt > 2700),])
+
+toosmall <- NJ[which(NJ$contb_receipt_amt < 0),]
+as.data.frame(table(toosmall$receipt_desc))
+
+toolarge <- NJ[which(NJ$contb_receipt_amt > 2700),]
+as.data.frame(table(toolarge$receipt_desc))
+```
+
+There are 22 donations below 0 and 7 above the federal set maximum limit of $2,700. Almost all the donations below 0 are refunds. The ones above $2,700 list reattribution, which means putting the donation potentially in some one else's name, but for the majority the receipt description is blank. 
+
+Would think to look at the data in the range of 0 to 2700, which is the allowable range for donations.
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0),
+       aes(x=contb_receipt_amt)) + 
+  geom_histogram(binwidth=100) +
+  theme_bw() +
+  ggtitle("Bar plot of CONTRIBUTION RECEIPT AMOUNT")
+```
+
+What does this look like transformed? Does the second peak go away. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0),
+       aes(x=log10(contb_receipt_amt))) + 
+  geom_histogram(binwidth=0.5) +
+  theme_bw() +
+  ggtitle("Bar plot of CONTRIBUTION RECEIPT AMOUNT")
+```
+
+Doesn't look that much better than the original - this is mostly likely due to the ceiling effect producing an odd peak no matter the transformation. I also tried log2 and square root, but they didn't look any better. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=contb_receipt_dt)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CONTRIBUTION RECEIPT DATE") +
+  theme(axis.ticks = element_blank(), axis.text.x = element_blank())
+```
+
+This is a busy bar graph, but can clearly see that there are certain dates that people donate on more than others, with one in particularly standing out by creating a new variable called "count_DATE" which counts the frequency of each individual date listed. 
+
+```{r, echo=FALSE}
+count_DATE <- as.data.frame(table(NJ$contb_receipt_dt))
+dim(count_DATE)
+```
+
+Count the number of unique dates.
+
+```{r, echo=FALSE}
+dim(count_DATE[which(count_DATE$Freq == 1), ])
+```
+
+How many dates are listed more than 10 times in the dataset?
+
+```{r, echo=FALSE}
+dim(count_DATE[which(count_DATE$Freq > 10), ])
+```
+
+List the most frequently listed dates in the dataset
+
+```{r, echo=FALSE}
+summary(count_DATE$Freq)
+count_DATE[which(count_DATE$Freq == max(count_DATE$Freq)), ]
+```
+
+And that date is the 30th of June 2015 - with 189 donations made on that day. A quick google search tells me that on that day the governor of NJ (Chris Christie) declared his candidacy for the US presidential election, however Chris Christie was not one of the candidates named in the data for having donations - so maybe the announcement spurned people on to contribtue to rival campaigns. Will be interesting to see how the candidates campaigns received donations over time. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=receipt_desc))  + 
+  geom_bar() +
+  scale_y_log10() +
+  theme_bw() +
+  ggtitle("Bar plot of RECEIPT DESCRIPTION") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Most of these are relatively small in value.
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=memo_text)) + 
+  geom_bar() +
+  scale_y_log10() +
+  theme_bw() +
+  ggtitle("Bar plot of MEMO TEXT") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Like the reciept description - most of these are relatively small in value. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=form_tp)) + 
+  geom_bar() +
+  scale_y_log10() +
+  theme_bw() +
+  ggtitle("Bar plot of FORM TYPE") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+SA17A is for individual contributions, which most of this data is. SA18 is transfers from other authorized committees, and SB28A are refunds to individuals. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=election_tp)) + 
+  geom_bar() +
+  scale_y_log10() +
+  theme_bw() +
+  ggtitle("Bar plot of ELECTION TYPE/PRIMARY GENERAL INDICATOR") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+There are two types of elections. Most are for P2016, which is Primary 2016, but there are a few that are designated for G2016 which is the General 2016 election, which is slightly confusing that people could contribute to that since the primaries are not yet completed and candidates have not been choosen for that election. 
+
+## Make new variables
+
+Since there are multiple candidates at the current moment, it would be good to know which candidate belongs to which party, so I'm going to make a new variable called cand_party.  I'm going to table the frequency of each candidate name in the dataset. 
+
+```{r, echo=FALSE}
+as.data.frame(table(NJ$cand_nm))
+```
+
+There are fourteen candidates (listed below) and their party affiliation (found via google):
+Bush, Jeb                   Republican 
+Carson, Benjamin S.         Republican
+Clinton, Hillary Rodham     Democrat
+Cruz, Rafael Edward 'Ted'   Republican
+Fiorina, Carly              Republican
+Graham, Lindsey O.          Republican
+Huckabee, Mike              Republican
+O'Malley, Martin Joseph     Democrat
+Pataki, George E.           Republican
+Paul, Rand                  Republican
+Perry, James R. (Rick)      Republican
+Rubio, Marco                Republican
+Sanders, Bernard            Democrat
+Santorum, Richard J.        Republican
+
+There are more Republicans than Democrats.
+
+I'm going to make a new variable that distinguishes which party each candidate belongs to and call this "cand_party". Then I'm going to table this new variable to see how often they occur in the dataset. 
+
+```{r, echo=FALSE}
+NJ$cand_party <- "Republican"
+NJ$cand_party[NJ$cand_nm=="Clinton, Hillary Rodham"] <- "Democrat"
+NJ$cand_party[NJ$cand_nm=="O'Malley, Martin Joseph"] <- "Democrat"
+NJ$cand_party[NJ$cand_nm=="Sanders, Bernard"] <- "Democrat"
+table(NJ$cand_party)
+```
+
+Despite there being more Republican candidates, it appears that donations have occured for Democrats. I can plot this new variable. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=cand_party)) + 
+  geom_bar() +
+  theme_bw() +
+  ggtitle("Bar plot of CANDIDATE PARTY") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+# Univariate Summary
+
+I've now looked at all the vairables individually from the dataset. This was a good way to get to know the data. Most people in NJ are making contributions to Democrats, with the most contributions going to Hilary Clinton. Most donations are small, but there is a peak at the ceiling of $2700 (the maximum allowed), however I did notice some amount above that and also negative numbers which seemed to reflect mostly refunds. Occupation data while interesting, was sparse, as not everyone had given this information. Furthermore, it was not broken into broad enough categories for it to be fruitful going forward (over 400 categories), however, a lot of them appear only once, and restricting to the top 10 occupations listed may still be of interest. 
+
+I'm mostly interested in seeing which candidates get the largest amount of money, if these is a difference in amounts by party affiliation, if there is difference in amount and candidaate by occupation or location.
+
+# Donation Amount by Candidate and Party. 
+
+Examine if the donation amounts differ by party affiliation and candidate. 
+First look at party affiliation
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ, aes(x=cand_party, y=contb_receipt_amt)) + 
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("Bar plot of CANDIDATE PARTY") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Let's look at this without the donations we think are outliers.
+    
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0), 
+       aes(x=cand_party, y=contb_receipt_amt)) + 
+  geom_boxplot() +
+  theme_bw() +
+  coord_trans(ytrans="sqrt") +
+  ggtitle("Box plot of donations by Party Affliation") 
+```
+
+Democrats appear to get more donations than Republicans, but we can quantify this with the data. Let's calculate the mean (and standard deviation) of donation amount by party affliation and the total donation amount rasied by each party. 
+
+```{r, echo=FALSE}
+ddply(NJ, ~cand_party, summarise, mean=mean(contb_receipt_amt),
+      sd=sd(contb_receipt_amt), sum=sum(contb_receipt_amt))
+```
+
+Democrats have a higher mean for donation amount and a higher total donation amount. So they are raising more money than the Republican party in New Jersey.  
+
+We can plot the donation amount for each individual candidate by pary. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0), 
+       aes(x=cand_nm, y=contb_receipt_amt, fill=cand_party)) + 
+  geom_boxplot() +
+  theme_bw() +
+  ggtitle("Bar plot of Donations to Candidate\nBy Party Affliation") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_fill_manual(values = c("blue", "red"))
+```
+
+There is quite a spread among the Republican nominations with some receiving small donation amounts on average with some larger outliers (i.e. Carson, Cruz, Rand, Rubio), but there are also candidatest that just recieved large donations (but appears to be few) (i.e. Bush, Pataki, Perry), and there there are the candidates receiving a spread of donations (i.e. Graham, Huckabee, Santorum). This pattern aligns more with the Democrat candidates (i.e. Clinton, O'Malley) who also appear to have a large spread of donation amounts. 
+
+### Total amount raised by each candidate
+
+I will create a new dataset ("NJ_money_by_candidate") which will contain the mean, standard deviation and total sum of donation amounts by each individual candidate. This information will be plotted to show the total donation amount raised by each individual candidate. 
+
+```{r, echo=FALSE}
+NJ_money_by_candidate <- ddply(NJ, ~cand_nm, summarise, mean=mean(contb_receipt_amt),
+                               sd=sd(contb_receipt_amt), sum=sum(contb_receipt_amt))
+NJ_money_by_candidate
+```
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(NJ_money_by_candidate,  aes(x=cand_nm, y=sum)) + 
+  geom_bar(stat="identity") +
+  theme_bw() +
+  ggtitle("Histogram of total money raised by each Candidate") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Clinton (Dem) has raised the most money by far, with Bush (Rep) in second. 
+
+## Donation Amount by Candidate and Party Over Time.
+
+I have time data for donations, so the next question might be to look at patterns of donations over time, but first I need to ensure that the date information is being correctly recognized as a date. 
+
+```{r, echo=FALSE}
+str(NJ)
+```
+
+The 'contb_receipt_dt' variable is not as a date but instead a factor. This needs to be changed. I will create a new variable ("Date") that contains the date in the correct format. 
+
+```{r, echo=FALSE}
+NJ$Date <- as.Date(NJ$contb_receipt_dt, format = "%d-%b-%y")
+str(NJ)
+``` 
+
+Now that it is in Date format, we can plot the data. This plot is the donation amount by time, with each line representing a differnet party (Republican or Democrat).
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0),
+       aes(x=Date, y=contb_receipt_amt, group=cand_party)) +
+    geom_line(aes(color=cand_party), stat = 'summary', fun.y = mean) +
+    theme_bw() +
+    scale_y_log10() +
+  ggtitle("Plot of mean donations over time by party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1)) +
+  scale_colour_manual(values = c("blue", "red"))
+```
+
+The first people to get donations was a Republican, and it looks like Democrats did not start to receive donations till about April 2015. Let's subset this plot to just look at time points after April. 
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0 & 
+           Date > as.Date("2015-04-01")),
+       aes(x=Date, y=contb_receipt_amt, group=cand_party)) +
+    geom_line(aes(color=cand_party), stat = 'summary', fun.y = mean) +
+    theme_bw() +
+    scale_y_log10() +
+  ggtitle("Plot of mean donations over time by party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1)) +
+  scale_colour_manual(values = c("blue", "red"))
+```
+
+Democrats around mid April to early June were receiving larger donations than Republicans however around mid June this trend seems to fade with them receiving equal donation amounts. There is one spike early for Republicans in late May, but that looks more like an outlier than a true increase. Republicans over this period of time appear to be growing in donation amounts, where the Democrats (while fluxuating) seems to remain mostly the same. 
+
+If geom_smooth is used instead, the plot might reflect this general pattern.
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0 & 
+           Date > as.Date("2015-04-01")),
+       aes(x=Date, y=contb_receipt_amt, group=cand_party)) +
+    geom_smooth(aes(fill=cand_party), method=lm) +
+    theme_bw() +
+    scale_y_log10() +
+  ggtitle("Plot of donations over time by party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1)) +
+  scale_fill_manual(values = c("blue", "red"))
+```
+
+This plot loses a lot of information about contributions, but does show that the trend for increase in donations to Republicans, and the steady (maybe a slight decrease) in donation to Democrats over time. 
+
+When can also look at this information for each individual candidate separated by party affiliation. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0),
+       aes(x=Date, y=contb_receipt_amt, group=cand_nm)) + 
+  geom_line(aes(color=cand_nm)) +
+  facet_wrap(~cand_party, ncol=1) +
+  theme_bw() +
+  scale_y_log10() +
+  ggtitle("Plot of donations over time by candidate and party affliation") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```
+
+Interesting. The plot is too messy to make too much of it, but it is clear that people came into the race at different time points. Republicans were the first to come forward to declare they were running for President, with Rand declaring very early and then Cruz coming in second. Democrats don't declare for almost a full 6 months later, with Clinton being the first to recieve donations. Around April time, we see that a lot of Republican candidates start receiving contributions, suggesting they all declared their intentions around this time. 
+
+However, the plot is too messy to make any sense of the data, but maybe if we plot the mean value of the donations rather than just the donations the plot might be a bit smoother. 
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0),
+       aes(x=Date, y=contb_receipt_amt, group=cand_nm)) +
+    geom_line(aes(color=cand_nm), stat = 'summary', fun.y = mean) +
+    theme_bw() +
+    scale_y_log10() +
+    facet_wrap(~cand_party, ncol=1) +
+  ggtitle("Plot of mean donations over time by candidate and party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1))
+```
+
+This is a slightly better plot of the data, if I plot the sum instead of the mean does this look a bit better as a plot
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0),
+       aes(x=Date, y=contb_receipt_amt, group=cand_nm)) +
+    geom_line(aes(color=cand_nm), stat = 'summary', fun.y = sum) +
+    theme_bw() +
+    scale_y_log10() +
+    facet_wrap(~cand_party, ncol=1) +
+  ggtitle("Plot of mean donations over time by candidate and party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1))
+```
+
+This is good, but I think I'm going to subset it to get a better look at the donations starting from April, where a lot of the data is ploting and keep it as the sum instead of the mean. 
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0 &
+              Date > as.Date("2015-04-01")),
+       aes(x=Date, y=contb_receipt_amt, group=cand_nm)) +
+    geom_line(aes(color=cand_nm), stat = 'summary', fun.y = sum) +
+    theme_bw() +
+    scale_y_log10() +
+    facet_wrap(~cand_party, ncol=1) +
+  ggtitle("Plot of mean donations over time by candidate and party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1))
+```
+
+There are late people in the Republican side that receive high donation amount on average (i.e Bush and Pataki), but they have little data as they only started receieving donations around June (when they must have declared their intentions to run for President), so the amount of time they could have received donations is less than that of Clinton or Rand. 
+
+For the Democrats, Clinton is consistently recieveing larger donations than Sanders, with O'Malley varying more than the other two. The Republican data is a little more inconsistent than the Democrat data, and this could in part be because they have a larger number of candidates for donations to be spread out among. But there is one indivdiuals who seems to be on a down trend (receiving lower amounts of donations over time) (Huckabee), while another appears to be increasing the donation amount with time (Graham).
+
+Again using geom_smooth to give a general idea about the overall pattern of the data might be a good idea. 
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0 &
+              Date > as.Date("2015-04-01")),
+       aes(x=Date, y=contb_receipt_amt, group=cand_nm)) +
+    geom_smooth(aes(fill=cand_nm), method=lm) +
+    theme_bw() +   
+    scale_y_log10() +
+    facet_wrap(~cand_party, ncol=1) +
+  ggtitle("Plot of donations over time by candidate and party affliation") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1)) 
+```
+
+This isn't as clear as it was for the party affiliation, and this is mostly due to the large number of candidates for the Republican party. The Democrats are mostly stable lines for Clinton and Sanders, while O'Malley has a little decrease and wider variance (standard error) than the other two candidates. 
+
+For the Republicans, a lot of individuals have wide SEs. There are trends for people going up and down as hypothesed above. Interestingly, Bush in this graph has a flat line with wide SEs, not appearing to be increasing like the previous plot. This may be due to low number of data points for Bush that are highly variable. 
+
+# Donation Amounts by City
+There are a lot of cities in the dataset, so I'm only going to look at the cities that have the most donations (the top 10 cities for frequency in the dataset).
+Earlier I made a new dataset set with the counts of the number of occurance for each city (called count_CITY). I'm going to use this information to create a new dataframe ("NJ_top_cities") which only contains the top 10 cities that occur most frequently in the data (have the most contributing indivduals). Then using this new dataframe I will calculate the total amount of donations for each city for each candidate by party affiliation. 
+
+```{r, echo=FALSE}
+top_cities <- head(count_CITY[order(-count_CITY$Freq),1], n=10L)
+NJ_top_cities <- NJ[(which(NJ$contbr_city %in% top_cities)),] 
+NJ_top_cities_money <- ddply(NJ_top_cities, ~contbr_city+cand_nm+cand_party, summarise,
+                             sum=sum(contb_receipt_amt))
+NJ_top_cities_money
+```
+
+First plot the cities by total donation amount by party affiliation. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+NJ_top_cities_money <- NJ_top_cities_money[order(NJ_top_cities_money$cand_party),]
+ggplot(NJ_top_cities_money, aes(x=contbr_city, y=sum, fill=cand_party)) + 
+  geom_bar(stat="identity", position="dodge") +
+  theme_bw() +
+  ggtitle("Bar plot of total donations for\nTop 10 Contributing Cities by Party") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_fill_manual(values = c("blue", "red"))
+```	
+
+Next plot the total donation amounts by city for each individual candidiate. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+NJ_top_cities_money <- NJ_top_cities_money[order(NJ_top_cities_money$cand_nm),]
+ggplot(NJ_top_cities_money, aes(x=contbr_city, y=sum, fill=cand_nm)) + 
+  geom_bar(stat="identity", position="dodge") +
+  theme_bw() +
+  ggtitle("Bar plot of total donations for\nTop 10 Contributing Cities by Candidate") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```	
+
+The top 10 contributing cities are contributing more the the Democrats than to Republicans with most of the donations to Clinton (Dem). However some cities support other candidates with a larger majority (i.e. Livingston and Bush), but it appears the Clinton gets more total donations in these cities than other candidates. 
+
+# Donation Amounts by Occupation
+Going to examine the occupation information in the same way I just looked at cities. Again, beucase there are a lot of occupations in the dataset,  I'm only going to look at the occupations that have the most donations (the top 10 occupations for frequency in the dataset). Earlier I made a new dataset set with the counts of the number of occurance for each city (called count_OCCUPATION). I can use this to create a new dataframe called "NJ_top_occu" which contains only the top 10 most frequently list occupations. With this new dataframe, I will calculate the total donation amount for each candidate and party affiliation by occupation. 
+
+```{r, echo=FALSE}
+top_occu <- head(count_OCCUPATION[order(-count_OCCUPATION$Freq),1], n=10L)
+NJ_top_occu <- NJ[(which(NJ$contbr_occupation %in% top_occu)),] 
+NJ_top_occu_money <- ddply(NJ_top_occu, ~contbr_occupation+cand_nm+cand_party,
+                           summarise, sum=sum(contb_receipt_amt))
+NJ_top_occu_money
+```
+
+First plot the total donation amount by occupaton and party affiliation. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+NJ_top_occu_money <- NJ_top_occu_money[order(NJ_top_occu_money$cand_party),]
+ggplot(NJ_top_occu_money, aes(x=contbr_occupation, y=sum, fill=cand_party)) + 
+  geom_bar(stat="identity", position="dodge") +
+  theme_bw() +
+  ggtitle("Bar plot of total donations for\nTop 10 Contributing Occupations by Party") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_fill_manual(values = c("blue", "red"))
+```	
+
+Next plot the total donation amount by occupation and individual candidate. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+NJ_top_occu_money <- NJ_top_occu_money[order(-NJ_top_occu_money$sum),]
+ggplot(NJ_top_occu_money, aes(x=contbr_occupation, y=sum, fill=cand_nm)) + 
+  geom_bar(stat="identity", position = "dodge") +
+  theme_bw() +
+  ggtitle("Bar plot of total donations for\nTop 10 Contributing Occupations by Candidate") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1))
+```	
+
+Again, because Democrats have more donations overall, the plots show that Democrats are getting more donations from the top 10 occupations, but there are some interesting patterns. Lawyers and Not Employed include only donations to Democrats and none to Republicans, whereas those that did not disclose what they did (Information requested per best efforts) only donated to Republicans and not Democrats. Also for Retired, Physicians and Homemarkers, the split appears to be much closer to 50/50 than other occupations. Also, the candidate receiveing the most money for almost all occupations is Clinton (Dem), except for those that did not disclose what they did (Information requested per best efforts) wher Rubio (Rep) received the largest amount, and for not employed indivdiuals who gave more money to Sanders (Dem) than Clinton (Dem).
+
+# Final Plots
+
+The first plot is shows the donation amounts received over time to each party (Republican or Democrat). This plot shows the differences in donations made, particularly to the Republican party as it appears to be gaining in donation amount over time. It would be interesting to re-assess this data in 6 to 12 months time to see if that trend continues. 
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0 & 
+           Date > as.Date("2015-04-01")),
+       aes(x=Date, y=contb_receipt_amt, group=cand_party)) +
+    geom_line(aes(color=cand_party), stat = 'summary', fun.y = sum) +
+    theme_bw() +
+    scale_y_log10() + 
+  ggtitle("Plot of total donations over time\nby party affliation after 1st of April") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  scale_colour_manual(name="Candidate Party",
+      values = c("blue", "red")) +
+  ylab("Logarithm of Donation Amount (in US Dollars)") 
+```
+
+Furthermore, the plot which shows the donations amounts to indivdiaul candidates by party affliation is also interesting. This shows that Clinton recieves a consistent amount of donations over time which is higher than Sanders, but really the Repubican side of this plot is more interesting than the Democrats. Clinton has received the most money over time even in comparison with the Republicans who all recieve smaller amounts over time than Clinton does. The Republicans have more candidates, and this plot shows when some declared their intentions to run for President (as this is approximately near the time they start receiving donations). Bush for the Republicans is one of the last to start recieving donations and his line is increasing at teh very end of the plot, but on average they are large, and this might in part explain the upward trend seen in the previous plot. 
+
+```{r fig.width=8, fig.height=10, echo=FALSE}
+ggplot(subset(NJ, contb_receipt_amt<=2700 & contb_receipt_amt > 0 &
+              Date > as.Date("2015-04-01")),
+       aes(x=Date, y=contb_receipt_amt, group=cand_nm)) +
+    geom_line(aes(color=cand_nm), stat = 'summary', fun.y = sum) +
+    theme_bw() +
+    scale_y_log10() +
+    facet_wrap(~cand_party, ncol=1) +
+  ggtitle("Plot of total donations over time\nby candidate and party affliation after the 1st of April") +
+  theme(axis.text.x = element_text(angle = 90, hjust=1)) +
+  ylab("Logarithm of Donation Amount (in US Dollars)") +
+  scale_fill_discrete(name="Candidate Name") 
+```
+
+The last plot choosen is the bar plot of total donations made from the top ten contributing cities by party affiliation. While most show that donations are largely to Democratic candidates, Livingston is intersting as they have donated more to Republicans than Democrats. It also reflects differences between cities in New Jersey and their political leanings. While most (9 out of 10) appear to most heavily support (via monetary donations) a Democratic candidate, one town favors Republicans, showing that location and potential through that socio-economic status or other factors linked to location, play a role in political support. 
+
+```{r fig.width=7, fig.height=6, echo=FALSE}
+NJ_top_cities_money <- NJ_top_cities_money[order(NJ_top_cities_money$cand_party),]
+ggplot(NJ_top_cities_money, aes(x=contbr_city, y=sum, fill=cand_party)) + 
+  geom_bar(stat="identity", position="dodge") +
+  theme_bw() +
+  ggtitle("Bar plot of total donations for\nTop 10 Contributing Cities by Party") +
+  theme(axis.text.x = element_text(angle = 45, hjust=1)) +
+  xlab("City") +
+  ylab("Total amount of donations (in US dollars)") +
+  scale_fill_manual(name="Party Affiliation", values = c("blue", "red"))
+```	
+
+# Reflection
+
+This is the first time that I have worked with this type of data, and I found it very interesting. 
+
+There were some anomalies in the data, particularly with regards to donations amounts. There were some in the data that are over the legal limit ($2700), and these are obviously in violation of the law. Having done an internet search on this, it appears these are normally refunded (as some donations in this dataset were), or part of the amount transfered to be a donation in a spouses name (as was also the case for some of the data in this dataset). For this reason, I choose to only focus on donations that I felt were valid, meaning falling within the values of $1 and $2700.
+
+It was difficult to get to know the data, and all the various columns of information. The date information needed to be reformatted to work correctly. Other information was lacking, like the employer and occupation information was only there for a subset of individuals. Cleaning needed to be done for candidate names, which is a little worrying. This needed to be updated to give accurate reflections of the donations. 
+
+I also gave the individual candidates party affiliation, to assess differences between the two main US parties in how individuals form NJ were donating. Not overly suprisingly, Democratic candidates were more successively at raising money in NJ than Republican counterparts. I think this is because NJ as a state in recent elections (the past 6) votes for Democratic candidates, suggesting Democratic leanings to the NJ populations. 
+
+Most people were donating to Clinton above all other candidates, but the time series plots showed that there were some increases on the Republican side which might be due to individuals making contributions to Bush who entered the race later than most other individauls. Re-assessment of this data in 6 months time may show slightly different patterns if people continue to donate to Bush to the same extent as they had started here. 
+
+Overall I found this incredibly interesting, and will most likely download the data in a few months time to see how it has changed. 
