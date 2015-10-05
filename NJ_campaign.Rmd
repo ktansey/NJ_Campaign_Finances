@@ -17,7 +17,6 @@ For the past 6 elections (since 1992), New Jersey has voted Democrat, and it wil
 
 Load the data and relevant libraries. Examine the data for summary information. 
 ```{r, echo=FALSE, message=FALSE, warning=FALSE, packages}
-setwd('/Users/katherinetansey/Dropbox/udacity/project4/P00000001-NJ')
 library(plyr)
 library(reshape2)
 library(ggplot2)
